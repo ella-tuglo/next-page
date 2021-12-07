@@ -1,43 +1,147 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    const ChatApp(),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+String _name = 'empress';
+
+class ChatApp extends StatelessWidget {
+  const ChatApp({
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Screen Navigation',
-      home: MainPage(),
+    return const MaterialApp(
+      title: 'FriendlyChat',
+      home: ChatScreen(),
     );
   }
 }
 
-class MainPage extends StatelessWidget {
-  const MainPage({Key? key}) : super(key: key);
+class ChatMessage extends StatelessWidget {
+  const ChatMessage(
+      {required this.text, required this.animationController, Key? key})
+      : super(key: key);
+  final String text;
+  final AnimationController animationController;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizeTransition(
+      sizeFactor:
+          CurvedAnimation(parent: animationController, curve: Curves.easeInOut),
+      axisAlignment: 0.0,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              child: CircleAvatar(
+                child: Text(_name[0]),
+              ),
+            ),
+            Column(
+              children: [
+                Text(_name, style: Theme.of(context).textTheme.headline4),
+                Container(
+                  margin: const EdgeInsets.only(top: 5.0),
+                  child: Text(text),
+                )
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChatScreen extends StatefulWidget {
+  const ChatScreen({
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
+  final List<ChatMessage> _messages = [];
+  final _textController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  bool _isComposing = false;
+
+  void _handleSubmitted(String text) {
+    _textController.clear();
+    var message = ChatMessage(
+      text: text,
+      animationController: AnimationController(
+        duration: const Duration(milliseconds: 700),
+        vsync: this,
+      ),
+    );
+    setState(() {
+      _messages.insert(0, message);
+    });
+    _focusNode.requestFocus();
+    message.animationController.forward();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Screen Navigation'),
+      appBar: AppBar(title: const Text('ChatUI')),
+      // body: _buildTextComposer(),
+      body: Column(
+        children: [
+          Flexible(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(8.0),
+              reverse: true,
+              itemBuilder: (_, int index) => _messages[index],
+              itemCount: _messages.length,
+            ),
+          ),
+          const Divider(height: 1.0),
+          Container(
+              decoration: BoxDecoration(color: Theme.of(context).cardColor),
+              child: _buildTextComposer())
+        ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('click the button to navigate to the second screen'),
-            RaisedButton(
-              textColor: Colors.white,
-              color: Colors.yellow,
-              child: Text('Go to second screen'),
-              onPressed: () {
-                navigateToSubPage(context);
-              },
-              //TODO add on pressed
+    );
+  }
+
+  Widget _buildTextComposer() {
+    return IconTheme(
+      data: IconThemeData(color: Theme.of(context).colorScheme.secondary),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8.0),
+        child: Row(
+          children: [
+            Flexible(
+              child: TextField(
+                controller: _textController,
+                onChanged: (text){
+                  setState(() {
+                   _isComposing =text.isNotEmpty;
+                  });
+                },
+                onSubmitted:_isComposing? _handleSubmitted: null,
+                decoration:
+                    const InputDecoration.collapsed(hintText: 'Send a message'),
+                focusNode: _focusNode,
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: () => _handleSubmitted(_textController.text)),
             ),
           ],
         ),
@@ -45,40 +149,11 @@ class MainPage extends StatelessWidget {
     );
   }
 
-  Future navigateToSubPage(context) async {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => SubPage()));
-  }
-}
-
-class SubPage extends StatelessWidget {
-  const SubPage({Key? key}) : super(key: key);
-
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Screen Navigation'),
-        backgroundColor: Colors.green,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const <Widget>[
-            Text('click the button to navigate to the second screen'),
-            RaisedButton(
-              textColor: Colors.yellow,
-              color: Colors.green,
-              child: Text('Hold me close'),
-              onPressed: null,
-              //TODO add on pressed
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void backToMainPage(context) {
-    Navigator.pop(context);
+  void dispose() {
+    for (var message in _messages) {
+      message.animationController.dispose();
+    }
+    super.dispose();
   }
 }
